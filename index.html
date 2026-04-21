@@ -42,6 +42,29 @@
     .fc-event { cursor: pointer; }
     .fc-toolbar-title { font-size: 18px !important; }
 
+    /* イベントタイル内の時刻・タイトル */
+    .fc-event-main-frame {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 2px;
+      padding: 1px 3px;
+      overflow: hidden;
+    }
+    .fc-event-time-inline {
+      font-size: 11px;
+      opacity: 0.9;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .fc-event-title-inline {
+      font-size: 12px;
+      font-weight: bold;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     /* イベント詳細ポップアップ */
     .modal-overlay {
       display: none;
@@ -168,6 +191,21 @@
           right: 'dayGridMonth,listMonth'
         },
         buttonText: { today: '今日', month: '月', list: '一覧' },
+        eventContent: function (arg) {
+          // 終日イベントはタイトルのみ、時刻付きイベントは「HH:MM-HH:MM タイトル」を表示
+          if (arg.event.allDay) return;
+          var timeOpts = { hour: '2-digit', minute: '2-digit' };
+          var start = arg.event.start;
+          var end = arg.event.end;
+          var timeStr = start.toLocaleTimeString('ja-JP', timeOpts);
+          if (end) timeStr += '〜' + end.toLocaleTimeString('ja-JP', timeOpts);
+          return {
+            html: '<div class="fc-event-main-frame">' +
+                    '<div class="fc-event-time-inline">' + timeStr + '</div>' +
+                    '<div class="fc-event-title-inline">' + arg.event.title + '</div>' +
+                  '</div>'
+          };
+        },
         eventClick: function (info) {
           info.jsEvent.preventDefault();
           showModal(info.event);
