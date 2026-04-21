@@ -62,8 +62,16 @@
       flex-shrink: 0;
     }
     .fc-event-title-inline {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: bold;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* 祝日タイトルは小さめに表示 */
+    .fc-holiday-title {
+      font-size: 11px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -212,7 +220,7 @@
         eventContent: function (arg) {
           if (arg.event.allDay) {
             const titleEl = document.createElement('div');
-            titleEl.className = 'fc-event-title fc-sticky';
+            titleEl.className = 'fc-event-title fc-sticky fc-holiday-title';
             titleEl.textContent = arg.event.title;
             return { domNodes: [titleEl] };
           }
