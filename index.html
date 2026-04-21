@@ -198,8 +198,7 @@
             googleCalendarId: 'ja.japanese#holiday@group.v.calendar.google.com',
             color: '#b0b0b0',
             textColor: '#fff',
-            editable: false,
-            extendedProps: { isHoliday: true }
+            id: 'holidays'
           }
         ],
         initialView: 'dayGridMonth',
@@ -231,7 +230,7 @@
         },
         eventClick: function (info) {
           info.jsEvent.preventDefault();
-          if (info.event.extendedProps.isHoliday) return;
+          if (info.event.source && info.event.source.id === 'holidays') return;
           showModal(info.event);
         }
       });
