@@ -4,12 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>カレンダー</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css"
+    rel="stylesheet"
+    integrity="sha384-a+uEN0SA9NPmaoLnc5WsmxDS2SgEiUlzTisgqmWvaOsxzPREhiatn8EIBuY/Zsl2"
+    crossorigin="anonymous">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
@@ -26,11 +27,7 @@
       gap: 12px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.15);
     }
-
-    header h1 {
-      font-size: 20px;
-      font-weight: 500;
-    }
+    header h1 { font-size: 20px; font-weight: 500; }
 
     .calendar-wrapper {
       padding: 24px;
@@ -42,15 +39,89 @@
       background: white;
       border-radius: 8px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-      overflow: hidden;
+      padding: 16px;
     }
 
-    iframe {
-      display: block;
-      width: 100%;
-      height: 700px;
-      border: none;
+    /* FullCalendar カスタムスタイル */
+    .fc-event { cursor: pointer; }
+    .fc-toolbar-title { font-size: 18px !important; }
+
+    /* イベントタイル内の時刻・タイトル */
+    .fc-event-main-frame {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 2px;
+      padding: 1px 3px;
+      overflow: hidden;
     }
+    .fc-event-time-inline {
+      font-size: 11px;
+      opacity: 0.9;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .fc-event-title-inline {
+      font-size: 12px;
+      font-weight: bold;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* イベント詳細ポップアップ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-size: 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #666;
+      line-height: 1;
+    }
+    .modal-close:hover { color: #333; }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      padding-right: 24px;
+      line-height: 1.4;
+    }
+
+    .modal-detail {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: #444;
+    }
+    .modal-detail svg { flex-shrink: 0; margin-top: 2px; }
+    .modal-detail span { line-height: 1.5; }
 
     footer {
       text-align: center;
@@ -60,12 +131,8 @@
     }
 
     @media (max-width: 600px) {
-      .calendar-wrapper {
-        padding: 12px;
-      }
-      iframe {
-        height: 500px;
-      }
+      .calendar-wrapper { padding: 12px; }
+      .fc-toolbar { flex-direction: column; gap: 8px; }
     }
   </style>
 </head>
@@ -80,22 +147,143 @@
 
   <div class="calendar-wrapper">
     <div class="calendar-container">
-      <!--
-        CALENDAR_ID をあなたのGoogleカレンダーIDに置き換えてください。
-        例: src=abcdef1234567890%40group.calendar.google.com
-      -->
-      <iframe
-        src="https://calendar.google.com/calendar/embed?src=717b138e5f62517c6878617c843e354389600820ee5b903e56e29ba6c336cec1%40group.calendar.google.com&ctz=Asia%2FTokyo&hl=ja&mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0"
-        frameborder="0"
-        scrolling="no"
-        allowtransparency="true">
-      </iframe>
+      <div id="calendar"></div>
     </div>
   </div>
 
-  <footer>
-    予定は随時更新されます。
-  </footer>
+  <!-- イベント詳細ポップアップ（#1: ARIA属性追加） -->
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <button class="modal-close" id="modal-close" aria-label="閉じる">&times;</button>
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-detail" id="modal-datetime">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#5f6368">
+          <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
+        </svg>
+        <span id="modal-datetime-text"></span>
+      </div>
+      <div class="modal-detail" id="modal-location" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#5f6368">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+        <span id="modal-location-text"></span>
+      </div>
+    </div>
+  </div>
 
+  <footer>予定は随時更新されます。</footer>
+
+  <!-- #5: SRI ハッシュ追加 -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"
+    integrity="sha384-5JIwZN3kuxX2zKsavvNmbZ3zhZZMUtu/eQiK3BbXukpSXp0Cd2ZP4OAYKx7mrPgI"
+    crossorigin="anonymous"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.11/index.global.min.js"
+    integrity="sha384-9d6UcIK5Sjx/hxRhfx/QSqXD2/wTSsueCTPUfg/xAjaQimHdpydIEb+3pnLxXxu3"
+    crossorigin="anonymous"></script>
+  <script>
+    // Google Calendar API キー（取得方法は README を参照）
+    const GOOGLE_CALENDAR_API_KEY = 'AIzaSyCZZomd2fF1fNTQoS77F61ytu1NLl1GQ1g';
+    // 公開用カレンダーのID（Google カレンダー設定 → カレンダーの統合 で確認）
+    const CALENDAR_ID = '717b138e5f62517c6878617c843e354389600820ee5b903e56e29ba6c336cec1@group.calendar.google.com';
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        googleCalendarApiKey: GOOGLE_CALENDAR_API_KEY,
+        events: { googleCalendarId: CALENDAR_ID },
+        initialView: 'dayGridMonth',
+        locale: 'ja',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,listMonth'
+        },
+        buttonText: { today: '今日', month: '月', list: '一覧' },
+        eventContent: function (arg) {
+          if (arg.event.allDay) return;
+          const timeOpts = { hour: '2-digit', minute: '2-digit' };
+          const start = arg.event.start;
+          const end = arg.event.end;
+          let timeStr = start.toLocaleTimeString('ja-JP', timeOpts);
+          if (end) timeStr += '〜' + end.toLocaleTimeString('ja-JP', timeOpts);
+          const frame = document.createElement('div');
+          frame.className = 'fc-event-main-frame';
+          const timeEl = document.createElement('div');
+          timeEl.className = 'fc-event-time-inline';
+          timeEl.textContent = timeStr;
+          const titleEl = document.createElement('div');
+          titleEl.className = 'fc-event-title-inline';
+          titleEl.textContent = arg.event.title;
+          frame.appendChild(timeEl);
+          frame.appendChild(titleEl);
+          return { domNodes: [frame] };
+        },
+        eventClick: function (info) {
+          info.jsEvent.preventDefault();
+          showModal(info.event);
+        }
+      });
+      calendar.render();
+
+      // ポップアップを閉じる（クリック・Escapeキー）
+      document.getElementById('modal-close').addEventListener('click', closeModal);
+      document.getElementById('modal-overlay').addEventListener('click', function (e) {
+        if (e.target === this) closeModal();
+      });
+      // #6: Escape キーでモーダルを閉じる
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+      });
+    });
+
+    function showModal(event) {
+      document.getElementById('modal-title').textContent = event.title;
+
+      const datetimeText = formatDatetime(event.start, event.end, event.allDay);
+      document.getElementById('modal-datetime-text').textContent = datetimeText;
+
+      const location = event.extendedProps.location;
+      const locationEl = document.getElementById('modal-location');
+      if (location) {
+        document.getElementById('modal-location-text').textContent = location;
+        locationEl.style.display = 'flex';
+      } else {
+        locationEl.style.display = 'none';
+      }
+
+      document.getElementById('modal-overlay').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('active');
+    }
+
+    function formatDatetime(start, end, allDay) {
+      const opts = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
+      if (allDay) {
+        // #7: end が null の場合を考慮（終日単日イベント）
+        const endDay = end ? new Date(end.getTime() - 86400000) : null;
+        if (!endDay || isSameDay(start, endDay)) {
+          return start.toLocaleDateString('ja-JP', opts) + '（終日）';
+        }
+        return start.toLocaleDateString('ja-JP', opts) + ' 〜 ' + endDay.toLocaleDateString('ja-JP', opts) + '（終日）';
+      }
+      const timeOpts = { hour: '2-digit', minute: '2-digit' };
+      const startStr = start.toLocaleDateString('ja-JP', opts) + ' ' + start.toLocaleTimeString('ja-JP', timeOpts);
+      if (!end) return startStr;
+      if (isSameDay(start, end)) {
+        return startStr + ' 〜 ' + end.toLocaleTimeString('ja-JP', timeOpts);
+      }
+      return startStr + ' 〜 ' + end.toLocaleDateString('ja-JP', opts) + ' ' + end.toLocaleTimeString('ja-JP', timeOpts);
+    }
+
+    function isSameDay(a, b) {
+      return a.getFullYear() === b.getFullYear() &&
+             a.getMonth() === b.getMonth() &&
+             a.getDate() === b.getDate();
+    }
+  </script>
 </body>
 </html>
