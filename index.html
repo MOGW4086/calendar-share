@@ -192,7 +192,15 @@
       const calendarEl = document.getElementById('calendar');
       const calendar = new FullCalendar.Calendar(calendarEl, {
         googleCalendarApiKey: GOOGLE_CALENDAR_API_KEY,
-        events: { googleCalendarId: CALENDAR_ID },
+        eventSources: [
+          { googleCalendarId: CALENDAR_ID },
+          {
+            googleCalendarId: 'ja.japanese#holiday@group.v.calendar.google.com',
+            color: '#b0b0b0',
+            textColor: '#fff',
+            id: 'holidays'
+          }
+        ],
         initialView: 'dayGridMonth',
         locale: 'ja',
         headerToolbar: {
@@ -222,6 +230,7 @@
         },
         eventClick: function (info) {
           info.jsEvent.preventDefault();
+          if (info.event.source && info.event.source.id === 'holidays') return;
           showModal(info.event);
         }
       });
