@@ -180,8 +180,9 @@
     crossorigin="anonymous"></script>
   <script>
     // Google Calendar API キー（取得方法は README を参照）
-    const GOOGLE_CALENDAR_API_KEY = 'AIzaSyBVAYeKspRI8XG-pWgsV7XpXozzNNqjv6Y';
-    const CALENDAR_ID = '717b138e5f62517c6878617c843e354389600820ee5b903e56e29ba6c336cec1@group.calendar.google.com';
+    const GOOGLE_CALENDAR_API_KEY = 'YOUR_GOOGLE_CALENDAR_API_KEY';
+    // 公開用カレンダーのID（Google カレンダー設定 → カレンダーの統合 で確認）
+    const CALENDAR_ID = 'YOUR_CALENDAR_ID@group.calendar.google.com';
 
     document.addEventListener('DOMContentLoaded', function () {
       const calendarEl = document.getElementById('calendar');
@@ -203,12 +204,17 @@
           const end = arg.event.end;
           let timeStr = start.toLocaleTimeString('ja-JP', timeOpts);
           if (end) timeStr += '〜' + end.toLocaleTimeString('ja-JP', timeOpts);
-          return {
-            html: '<div class="fc-event-main-frame">' +
-                    '<div class="fc-event-time-inline">' + timeStr + '</div>' +
-                    '<div class="fc-event-title-inline">' + arg.event.title + '</div>' +
-                  '</div>'
-          };
+          const frame = document.createElement('div');
+          frame.className = 'fc-event-main-frame';
+          const timeEl = document.createElement('div');
+          timeEl.className = 'fc-event-time-inline';
+          timeEl.textContent = timeStr;
+          const titleEl = document.createElement('div');
+          titleEl.className = 'fc-event-title-inline';
+          titleEl.textContent = arg.event.title;
+          frame.appendChild(timeEl);
+          frame.appendChild(titleEl);
+          return { domNodes: [frame] };
         },
         eventClick: function (info) {
           info.jsEvent.preventDefault();
