@@ -210,7 +210,12 @@
         },
         buttonText: { today: '今日', month: '月', list: '一覧' },
         eventContent: function (arg) {
-          if (arg.event.allDay) return;
+          if (arg.event.allDay) {
+            const titleEl = document.createElement('div');
+            titleEl.className = 'fc-event-title fc-sticky';
+            titleEl.textContent = arg.event.title;
+            return { domNodes: [titleEl] };
+          }
           const timeOpts = { hour: '2-digit', minute: '2-digit' };
           const start = arg.event.start;
           const end = arg.event.end;
